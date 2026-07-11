@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 
 // 定義球員結構
 interface BulkPlayer {
   name: string;
   position: 'fielder' | 'pitcher';
+  number: string;
 }
 
 // 視覺主題：字體載入與設計 token（僅樣式，不影響任何功能邏輯）
@@ -144,6 +146,12 @@ function LeaderboardModal({ isOpen, onClose, data, type }: any) {
   );
 }
 
+function formatPlayerLabel(name?: string | null, number?: number | string | null) {
+  const n = name || '未知球員';
+  if (number === undefined || number === null || number === '') return n;
+  return `${n} #${number}`;
+}
+
 function ipToOuts(ip: number) {
     const whole = Math.floor(ip);
     const decimal = Math.round((ip - whole) * 10);
@@ -178,6 +186,8 @@ export default function Home() {
   const [historyStats, setHistoryStats] = useState<any[]>([]);
   const [displayStats, setDisplayStats] = useState<any[]>([]);
 
+  console.log("目前的 displayStats:", displayStats);
+
   // 篩選面板狀態
   const [inputTeamId, setInputTeamId] = useState('');
   const [inputStartDate, setInputStartDate] = useState('');
@@ -190,7 +200,7 @@ export default function Home() {
 
   // 批量新增球員
   const [bulkTeamId, setBulkTeamId] = useState('');
-  const [bulkPlayers, setBulkPlayers] = useState<BulkPlayer[]>([{ name: '', position: 'fielder' }]);
+  const [bulkPlayers, setBulkPlayers] = useState<BulkPlayer[]>([{ name: '', position: 'fielder', number: '' }]);
 
   // 批次錄入狀態
   const [activeRecordTeamId, setActiveRecordTeamId] = useState('');
@@ -518,6 +528,8 @@ const handleSearch = () => {
     // 其他情況（全部球隊無日期、多日範圍、只選球隊等）→ 顯示累計資料
     displayData = aggregateForDisplay(result);
   }
+  console.log("=== 查詢後的原始資料 ===", result.slice(0, 5)); // 看前5筆
+    console.log("欄位範例：", result[0] ? Object.keys(result[0]) : "無資料");
 
     setDisplayStats(displayData);
     setHasSearched(true);
@@ -605,6 +617,15 @@ const fetchAllData = async () => {
   const res = await fetch('/api/baseball');
   if (res.ok) {
     const data = await res.json();
+    
+    console.log("=== 【重要】RAW 原始比賽資料 ===");
+    console.log("總筆數:", data.stats?.length || 0);
+    if (data.stats?.length > 0) {
+      console.table(data.stats.slice(0, 6));   // 前6筆
+      console.log("欄位名稱:", Object.keys(data.stats[0]));
+      console.log("第一筆完整資料:", data.stats[0]);
+    }
+
     setTeams(data.teams || []);
     setPlayers(data.players || []);
     setHistoryStats(data.stats || []);
@@ -948,7 +969,8 @@ const aggregateStats = (allStats: any[]) => {
       .map(p => ({
         team_id: bulkTeamId,
         player_name: p.name,
-        position_type: p.position
+        position_type: p.position,
+        jersey_number: p.number.trim() === '' ? null : Number(p.number)
       }));
 
     if (formattedList.length === 0) return alert('請至少輸入一位球員');
@@ -961,7 +983,7 @@ const aggregateStats = (allStats: any[]) => {
 
     if (res.ok) {
       fetchAllData();
-      setBulkPlayers([{ name: '', position: 'fielder' }]);
+      setBulkPlayers([{ name: '', position: 'fielder', number: '' }]);
       setShowPlayerModal(false);
     }
   };
@@ -1003,6 +1025,12 @@ const aggregateStats = (allStats: any[]) => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/schedule"
+              className="bg-[#232B2E] hover:bg-[#333E41] px-5 py-2.5 rounded-lg text-sm border border-[#333E41] transition-colors font-medium"
+            >
+              賽程管理
+            </Link>
             <div className="flex items-center gap-2 bg-[#1A2124] px-4 py-2.5 rounded-lg border border-[#333E41]">
               <span
                 className="w-2 h-2 rounded-full shrink-0"
@@ -1119,7 +1147,7 @@ const aggregateStats = (allStats: any[]) => {
                             const pRow = batchRows[p.id] || {};
                             return (
                               <tr key={p.id} className="border-b border-[#2A3336] hover:bg-[#12181B]/60">
-                                <td className="py-4 px-4 font-medium">{p.player_name}</td>
+                                <td className="py-4 px-4 font-medium">{formatPlayerLabel(p.player_name, p.jersey_number)}</td>
                                 <td className="py-4 px-4 text-xs text-[#E2897E]">投手</td>
                                 <td className="py-4 px-4">
                                   <label className="flex items-center gap-2 text-xs text-[#B7BFBC] mb-2 select-none">
@@ -1162,7 +1190,7 @@ const aggregateStats = (allStats: any[]) => {
                             const pRow = batchRows[p.id] || {};
                             return (
                               <tr key={p.id} className="border-b border-[#2A3336] hover:bg-[#12181B]/60">
-                                <td className="py-4 px-4 font-medium">{p.player_name}</td>
+                                <td className="py-4 px-4 font-medium">{formatPlayerLabel(p.player_name, p.jersey_number)}</td>
                                 <td className="py-4 px-4 text-xs text-[#7FB4D6]">野手</td>
                                 <td className="py-4 px-4">
                                   <div className="grid grid-cols-6 gap-2 text-xs">   {/* 已調整為6欄 */}
@@ -1260,7 +1288,7 @@ const aggregateStats = (allStats: any[]) => {
                 {displayStats.filter(s => (s.type === 'fielder' || s.position_type === 'fielder')).length > 0 ? displayStats.filter(s => (s.type === 'fielder' || s.position_type === 'fielder'))
                 .map(stat => {
                 const player = players.find(p => String(p.id) === String(stat.player_id || stat.playerId));
-                const playerName = player?.player_name || player?.name || '未知球員';
+                const playerName = formatPlayerLabel(player?.player_name || player?.name, player?.jersey_number);
                 const isAggregate = stat.game_date === '累計' || !stat.game_date;
 
                 // 在 map 裡面，return (<tr> 之前加入這段計算
@@ -1356,7 +1384,7 @@ const aggregateStats = (allStats: any[]) => {
                       // 找到對應的球員物件
                       const player = players.find(p => String(p.id) === String(stat.player_id || stat.playerId));
                       // 自動相容 player_name 或 name 欄位
-                      const playerName = player?.player_name || player?.name || '未知球員';
+                      const playerName = formatPlayerLabel(player?.player_name || player?.name, player?.jersey_number);
 
                       return (
                         <tr key={stat.id} className="border-b border-[#2A3336] hover:bg-[#12181B]/60">
@@ -1424,6 +1452,13 @@ const aggregateStats = (allStats: any[]) => {
               {bulkPlayers.map((player, index) => (
                 <div key={index} className="flex gap-3 items-center bg-[#12181B] border border-[#333E41] rounded-lg p-2">
                   <input
+                    type="number"
+                    value={player.number}
+                    onChange={(e) => handleBulkPlayerChange(index, 'number', e.target.value)}
+                    placeholder="背號"
+                    className="w-20 bg-[#232B2E] border border-[#333E41] rounded-lg px-3 py-3 text-center"
+                  />
+                  <input
                     type="text"
                     value={player.name}
                     onChange={(e) => handleBulkPlayerChange(index, 'name', e.target.value)}
@@ -1452,7 +1487,7 @@ const aggregateStats = (allStats: any[]) => {
 
             <button
               type="button"
-              onClick={() => setBulkPlayers([...bulkPlayers, { name: '', position: 'fielder' }])}
+              onClick={() => setBulkPlayers([...bulkPlayers, { name: '', position: 'fielder', number: '' }])}
               className="w-full py-4 border border-dashed border-[#46524F] hover:border-[#6C7574] text-[#9BA5A4] hover:text-[#B7BFBC] rounded-lg mb-8 transition-colors"
             >
               ＋ 增加下一位球員
@@ -1490,7 +1525,7 @@ const aggregateStats = (allStats: any[]) => {
                 return (
                   <div key={p.id} className="bg-[#12181B] border border-[#333E41] rounded-lg p-5 flex justify-between items-center">
                     <div>
-                      <div className="font-medium">{p.player_name}</div>
+                      <div className="font-medium">{formatPlayerLabel(p.player_name, p.jersey_number)}</div>
                       <div className="text-xs text-[#9BA5A4] mt-1">
                         {posName} • {tName}
                       </div>
