@@ -135,21 +135,21 @@ export default function GameDetailPage() {
 
   // ---- 資料讀取 ----
   const fetchAll = async () => {
-    const [gameRes, baseballRes, lineupRes, scoreRes] = await Promise.all([
+    const [gameRes, teamsRes, lineupRes, scoreRes, gameStatsRes] = await Promise.all([
       fetch(`/api/games?id=${gameId}`).then(r => r.json()),
-      fetch('/api/baseball').then(r => r.json()),
+      fetch('/api/teams').then(r => r.json()),
       fetch(`/api/lineups?game_id=${gameId}`).then(r => r.json()),
       fetch(`/api/scoreboard?game_id=${gameId}`).then(r => r.json()),
+      fetch(`/api/game-stats?game_id=${gameId}`).then(r => r.json()),
     ]);
 
     const g = gameRes.games?.[0] || null;
     setGame(g);
-    setTeams(baseballRes.teams || []);
-    setPlayers(baseballRes.players || []);
+    setTeams(teamsRes.teams || []);
+    setPlayers(teamsRes.players || []);
 
-    const allStats = baseballRes.stats || [];
-    const gameFielderStats = allStats.filter((s: any) => s.type === 'fielder' && String(s.game_id) === String(gameId));
-    const gamePitcherStats = allStats.filter((s: any) => s.type === 'pitcher' && String(s.game_id) === String(gameId));
+    const gameFielderStats = gameStatsRes.fielderStats || [];
+    const gamePitcherStats = gameStatsRes.pitcherStats || [];
 
     if (g) {
       const homeEntries = (lineupRes.lineups || []).filter((e: any) => e.team_id === g.home_team_id);
@@ -158,11 +158,11 @@ export default function GameDetailPage() {
       setAwayLineup(buildInitialLineup(awayEntries, gameFielderStats));
 
       const homePitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (baseballRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+        const p = (teamsRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
         return p && p.team_id === g.home_team_id;
       });
       const awayPitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (baseballRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+        const p = (teamsRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
         return p && p.team_id === g.away_team_id;
       });
       setHomePitchers(buildInitialPitchers(homePitcherStats));

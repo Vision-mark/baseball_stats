@@ -88,7 +88,7 @@ export default function SchedulePage() {
   };
 
   const fetchTeams = async () => {
-    const res = await fetch('/api/baseball');
+    const res = await fetch('/api/teams');
     const data = await res.json();
     setTeams(data.teams || []);
   };
