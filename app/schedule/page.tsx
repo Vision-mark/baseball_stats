@@ -21,6 +21,7 @@ export default function SchedulePage() {
   const [newLeagueName, setNewLeagueName] = useState('');
   const [gameForm, setGameForm] = useState({
     stage: '初賽',
+    groupName: '',
     gameNumber: '',
     gameDate: '',
     homeTeamId: '',
@@ -58,12 +59,31 @@ export default function SchedulePage() {
   };
 
   // ---- 資料讀取 ----
+  // 依年份排序；同一年的話冬聯排在夏聯前面（抓不到年份/季節的排最後，維持原順序）
+  const sortLeagues = (list: any[]) => {
+    const seasonRank = (name: string) => {
+      if (name.includes('冬')) return 0;
+      if (name.includes('夏')) return 1;
+      return 2;
+    };
+    const yearOf = (name: string) => {
+      const match = name.match(/\d{4}/);
+      return match ? Number(match[0]) : 9999;
+    };
+    return [...list].sort((a, b) => {
+      const yearDiff = yearOf(a.name) - yearOf(b.name);
+      if (yearDiff !== 0) return yearDiff;
+      return seasonRank(a.name) - seasonRank(b.name);
+    });
+  };
+
   const fetchLeagues = async () => {
     const res = await fetch('/api/leagues');
     const data = await res.json();
-    setLeagues(data.leagues || []);
-    if (!selectedLeagueId && data.leagues?.length > 0) {
-      setSelectedLeagueId(data.leagues[0].id);
+    const sorted = sortLeagues(data.leagues || []);
+    setLeagues(sorted);
+    if (!selectedLeagueId && sorted.length > 0) {
+      setSelectedLeagueId(sorted[0].id);
     }
   };
 
@@ -128,6 +148,7 @@ export default function SchedulePage() {
         action: 'addGame',
         leagueId: selectedLeagueId,
         stage: gameForm.stage,
+        groupName: gameForm.groupName,
         gameNumber: gameForm.gameNumber,
         gameDate: gameForm.gameDate,
         homeTeamId: gameForm.homeTeamId,
@@ -136,7 +157,7 @@ export default function SchedulePage() {
     });
     const data = await res.json();
     if (!res.ok) return alert(data.error || '新增比賽失敗');
-    setGameForm({ stage: '初賽', gameNumber: '', gameDate: '', homeTeamId: '', awayTeamId: '' });
+    setGameForm({ stage: '初賽', groupName: '', gameNumber: '', gameDate: '', homeTeamId: '', awayTeamId: '' });
     fetchGames(selectedLeagueId);
   };
 
@@ -157,7 +178,12 @@ export default function SchedulePage() {
       <div className="max-w-5xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
           <div>
-            <Link href="/" className="text-sm text-[#9BA5A4] hover:text-[#EDEAE2]">← 回首頁</Link>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 bg-[#232B2E] hover:bg-[#333E41] border border-[#333E41] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              ← 回首頁
+            </Link>
             <h1 className="font-display text-4xl tracking-wide mt-2">賽程管理</h1>
           </div>
 
@@ -243,6 +269,13 @@ export default function SchedulePage() {
                   </select>
                   <input
                     type="text"
+                    value={gameForm.groupName}
+                    onChange={(e) => setGameForm({ ...gameForm, groupName: e.target.value })}
+                    placeholder="組別（選填，例如 A組）"
+                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                  />
+                  <input
+                    type="text"
                     value={gameForm.gameNumber}
                     onChange={(e) => setGameForm({ ...gameForm, gameNumber: e.target.value })}
                     placeholder="場次，例如 G3"
@@ -279,38 +312,61 @@ export default function SchedulePage() {
               </div>
             )}
 
-            {/* 比賽列表 */}
+            {/* 比賽列表：依賽段分組，賽段內再依組別分排 */}
             <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6">
               <h2 className="font-display text-2xl tracking-wide mb-4">比賽列表</h2>
               {games.length === 0 ? (
                 <p className="text-sm text-[#9BA5A4]">這個聯盟目前還沒有排定的比賽。</p>
               ) : (
-                <div className="space-y-2">
-                  {games.map(g => (
-                    <div key={g.id} className="flex items-center justify-between bg-[#12181B] border border-[#333E41] rounded-lg px-5 py-4 flex-wrap gap-2">
-                      <Link href={`/games/${g.id}`} className="flex-1 min-w-[240px]">
-                        <div className="flex items-center gap-3 text-sm text-[#9BA5A4] mb-1">
-                          <span className="px-2 py-0.5 rounded bg-[#232B2E] text-[#D98E3F] text-xs font-medium">{g.stage}</span>
-                          {g.game_number && <span>{g.game_number}</span>}
-                          {g.game_date && <span>{g.game_date}</span>}
+                STAGES.filter(stage => games.some(g => g.stage === stage)).map(stage => {
+                  const stageGames = games.filter(g => g.stage === stage);
+                  const groupNames = Array.from(new Set(stageGames.map(g => g.group_name || '')));
+                  // 沒有分組的排在前面（key 為空字串），有分組的依字母/中文排序
+                  groupNames.sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+
+                  return (
+                    <div key={stage} className="mb-8 last:mb-0">
+                      <h3 className="text-sm font-semibold text-[#D98E3F] mb-3">{stage}</h3>
+                      {groupNames.map(groupName => (
+                        <div key={groupName || '__none__'} className="mb-4 last:mb-0">
+                          {groupName && (
+                            <p className="text-xs text-[#9BA5A4] mb-2">{groupName}</p>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {stageGames.filter(g => (g.group_name || '') === groupName).map(g => (
+                              <Link
+                                key={g.id}
+                                href={`/games/${g.id}`}
+                                className="block bg-[#12181B] border border-[#333E41] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors relative"
+                              >
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteGame(g.id); }}
+                                    className="absolute top-2 right-2 text-xs text-[#E2897E] hover:text-[#F2A89C]"
+                                  >
+                                    刪除
+                                  </button>
+                                )}
+                                <div className="flex items-center gap-2 text-xs text-[#9BA5A4] mb-2">
+                                  {g.game_number && <span>{g.game_number}</span>}
+                                  {g.game_date && <span>{g.game_date}</span>}
+                                </div>
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="font-medium">{teamName(g.away_team_id)}</span>
+                                  <span className="font-data text-[#7FBF95] font-semibold">{g.away_score ?? 0}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-sm mt-1">
+                                  <span className="font-medium">{teamName(g.home_team_id)}</span>
+                                  <span className="font-data text-[#7FBF95] font-semibold">{g.home_score ?? 0}</span>
+                                </div>
+                              </Link>
+                            ))}
+                          </div>
                         </div>
-                        <div className="font-medium">
-                          {teamName(g.away_team_id)} <span className="text-[#9BA5A4]">@</span> {teamName(g.home_team_id)}
-                        </div>
-                      </Link>
-                      <div className="flex items-center gap-3">
-                        <Link href={`/games/${g.id}`} className="text-sm text-[#4F86A6] hover:text-[#6FA0C0]">
-                          查看簡表 / 記分板 →
-                        </Link>
-                        {isSuperAdmin && (
-                          <button onClick={() => handleDeleteGame(g.id)} className="text-sm text-[#E2897E] hover:text-[#F2A89C]">
-                            刪除
-                          </button>
-                        )}
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  );
+                })
               )}
             </div>
           </>

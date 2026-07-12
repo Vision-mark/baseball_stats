@@ -1267,20 +1267,21 @@ const aggregateStats = (allStats: any[]) => {
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打席</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打數</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">安打</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">AVG</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">SLG</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">OPS</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">1B</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">2B</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">3B</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">HR</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">壘打</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">得分</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打點</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">得分</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三振</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">四壞</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">保送</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">盜壘</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">一安</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">二安</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三安</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">全壘打</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">壘打數</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">犧飛</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">SB</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打擊率</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">上壘率</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">長打率</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">OPS</th>
                   {isAuthorized && <th className="w-20 text-center sticky right-0 bg-[#12181B] z-10">操作</th>}
                 </tr>
               </thead>
@@ -1293,24 +1294,38 @@ const aggregateStats = (allStats: any[]) => {
 
                 // 在 map 裡面，return (<tr> 之前加入這段計算
                 let displayAvg = '.000';
+                let displayObp = '.000';
                 let displaySlg = '.000';
                 let displayOps = '.000';
+                let displayPa = stat.pa || 0;
+                let displayTb = Number(stat.tb || 0) ||
+                  (Number(stat.single || 0) + Number(stat.double || 0)*2 +
+                    Number(stat.triple || 0)*3 + Number(stat.hr || 0)*4);
 
                 if (isAggregate) {
                   displayAvg = stat.avg || '.000';
+                  displayObp = stat.obp || '.000';
                   displaySlg = stat.slg || '.000';
                   displayOps = stat.ops || '.000';
                 } else {
                   const ab = Number(stat.ab || 0);
                   const h = Number(stat.h || 0);
-                  const tb = Number(stat.tb || 0) || 
-                            (Number(stat.single || 0) + Number(stat.double || 0)*2 + 
-                              Number(stat.triple || 0)*3 + Number(stat.hr || 0)*4);
-                  
+                  const bb = Number(stat.bb || 0);
+                  const sf = Number(stat.sf || 0);
+                  const tb = displayTb;
+
+                  const obpDenom = ab + bb + sf;
+                  displayPa = displayPa || obpDenom;
+
                   if (ab > 0) {
                     displayAvg = (h / ab).toFixed(3);
                     displaySlg = (tb / ab).toFixed(3);
-                    displayOps = (h / ab + tb / ab).toFixed(3);
+                  }
+                  if (obpDenom > 0) {
+                    displayObp = ((h + bb) / obpDenom).toFixed(3);
+                  }
+                  if (ab > 0 || obpDenom > 0) {
+                    displayOps = (Number(displayObp) + Number(displaySlg)).toFixed(3);
                   }
                 }
 
@@ -1320,23 +1335,24 @@ const aggregateStats = (allStats: any[]) => {
                       {isAggregate ? '累計' : (stat.game_date || stat.gameDate || '').substring(0,10)}
                     </td>
                     <td className="py-3.5 px-6 font-medium sticky left-0 bg-[#1A2124] z-10">{playerName}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.pa || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{displayPa}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.ab || 0}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.h || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayAvg}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displaySlg}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayOps}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.rbi || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.r || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.so || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.bb || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.sb || 0}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.single || 0}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.double || 0}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.triple || 0}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.hr || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.tb || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.r || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.rbi || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.so || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.bb || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{displayTb}</td>
                     <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.sf || 0}</td>
-                    <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.sb || 0}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayAvg}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayObp}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displaySlg}</td>
+                    <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayOps}</td>
                     {isAuthorized && (
                       <td className="py-4 px-6 text-center sticky right-0 bg-[#1A2124] z-10">
                         {canManageTeam(player?.team_id) ? (
@@ -1371,10 +1387,20 @@ const aggregateStats = (allStats: any[]) => {
                   <tr className="bg-[#12181B] border-b border-[#333E41]">
                     <th className="text-left py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">日期</th>
                     <th className="text-left py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">球員</th>
-                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">勝</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">敗</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">ERA</th>
-                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">出賽</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">先發</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">局數</th>
-                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">安打</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">失分</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">責失</th>
-                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">四壞</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三振</th><th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">WHIP</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">局數</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打席</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">安打</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">全壘打</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三振</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">保送</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">失分</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">責失分</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">ERA</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">WHIP</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">出賽</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">先發</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">勝</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">敗</th>
                     {isAuthorized && <th className="w-20"></th>}
                   </tr>
                 </thead>
@@ -1385,23 +1411,40 @@ const aggregateStats = (allStats: any[]) => {
                       const player = players.find(p => String(p.id) === String(stat.player_id || stat.playerId));
                       // 自動相容 player_name 或 name 欄位
                       const playerName = formatPlayerLabel(player?.player_name || player?.name, player?.jersey_number);
+                      const isAggregate = stat.game_date === '累計' || !stat.game_date;
+
+                      let displayEra = '-';
+                      let displayWhip = '-';
+
+                      if (isAggregate) {
+                        displayEra = stat.era || '-';
+                        displayWhip = stat.whip || '-';
+                      } else {
+                        const outs = ipToOuts(Number(stat.ip || 0));
+                        if (outs > 0) {
+                          displayEra = ((Number(stat.er || 0) * 27) / outs).toFixed(2);
+                          displayWhip = (((Number(stat.bb || 0) + Number(stat.h || 0)) * 3) / outs).toFixed(2);
+                        }
+                      }
 
                       return (
                         <tr key={stat.id} className="border-b border-[#2A3336] hover:bg-[#12181B]/60">
                           <td className="py-3.5 px-6 text-[#9BA5A4] font-data">{(stat.game_date || stat.gameDate || '').substring(0, 10)}</td>
                           <td className="py-3.5 px-6 font-medium">{playerName}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.w || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.l || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{stat.era || '-'}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.g || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.gs || 0}</td>
                           <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.ip || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.bf || 0}</td>
                           <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.h || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.hr || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.so || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.bb || 0}</td>
                           <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.r || 0}</td>
                           <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.er || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.bb || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.so || 0}</td>
-                          <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{stat.whip || '-'}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayEra}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums font-semibold text-[#7FBF95]">{displayWhip}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.g || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.gs || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.w || 0}</td>
+                          <td className="py-3.5 px-6 text-center font-data tabular-nums">{stat.l || 0}</td>
                           {isAuthorized && (
                             <td className="py-3.5 px-6 text-center font-data tabular-nums">
                               {canManageTeam(player?.team_id) ? (
@@ -1416,7 +1459,7 @@ const aggregateStats = (allStats: any[]) => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={15} className="text-center py-8 text-[#6C7574] italic">
+                      <td colSpan={17} className="text-center py-8 text-[#6C7574] italic">
                         目前無符合條件的投手數據
                       </td>
                     </tr>

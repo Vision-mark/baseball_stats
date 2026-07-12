@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       }
 
       for (const entry of statsList) {
-        const { playerId, gameDate, type, ...stats } = entry;
+        const { playerId, gameDate, gameId, type, ...stats } = entry;
 
         const table = type === 'pitcher' ? 'pitcher_stats' : 'fielder_stats';
 
@@ -134,13 +134,16 @@ export async function POST(request: Request) {
         if (type === 'pitcher') {
           payload = {
             player_id: playerId,
+            game_id: gameId || null,
             game_date: gameDate || new Date().toISOString(),
             w: stats.w,
             l: stats.l,
             g: stats.g,
             gs: stats.gs,
             ip: stats.ip,
+            bf: stats.bf,
             h: stats.h,
+            hr: stats.hr,
             r: stats.r,
             er: stats.er,
             bb: stats.bb,
@@ -149,6 +152,7 @@ export async function POST(request: Request) {
         } else {
           payload = {
             player_id: playerId,
+            game_id: gameId || null,
             game_date: gameDate || new Date().toISOString(),
             ab: stats.ab,
             h: stats.h,
@@ -165,7 +169,11 @@ export async function POST(request: Request) {
           };
         }
 
-        const { error } = await supabase.from(table).insert([payload]);
+        // 有帶 game_id 的話：同一位球員同一場比賽只留一筆，用 upsert 覆蓋掉舊的
+        // 沒有 game_id（舊的批次錄入流程）：維持原本每次都新增一筆的行為
+        const { error } = gameId
+          ? await supabase.from(table).upsert([payload], { onConflict: 'player_id,game_id' })
+          : await supabase.from(table).insert([payload]);
 
         if (error) {
           return NextResponse.json({ error: error.message }, { status: 400 });

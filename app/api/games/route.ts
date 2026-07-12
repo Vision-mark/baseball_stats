@@ -12,7 +12,27 @@ export async function GET(request: Request) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ games: data || [] });
+
+  const games = data || [];
+  const gameIds = games.map((g: any) => g.id);
+
+  // 附上每場比賽目前的總比分（從逐局記分板加總），方便賽程頁直接顯示比分框
+  let scoreMap: Record<string, Record<string, number>> = {};
+  if (gameIds.length > 0) {
+    const { data: scores } = await supabase.from('innings_score').select('game_id, team_id, runs').in('game_id', gameIds);
+    (scores || []).forEach((s: any) => {
+      if (!scoreMap[s.game_id]) scoreMap[s.game_id] = {};
+      scoreMap[s.game_id][s.team_id] = (scoreMap[s.game_id][s.team_id] || 0) + (s.runs || 0);
+    });
+  }
+
+  const gamesWithScores = games.map((g: any) => ({
+    ...g,
+    home_score: scoreMap[g.id]?.[g.home_team_id] || 0,
+    away_score: scoreMap[g.id]?.[g.away_team_id] || 0,
+  }));
+
+  return NextResponse.json({ games: gamesWithScores });
 }
 
 export async function POST(request: Request) {
@@ -25,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     if (body.action === 'addGame') {
-      const { leagueId, stage, gameNumber, gameDate, homeTeamId, awayTeamId } = body;
+      const { leagueId, stage, groupName, gameNumber, gameDate, homeTeamId, awayTeamId } = body;
 
       if (!leagueId || !stage || !homeTeamId || !awayTeamId) {
         return NextResponse.json({ error: '資料不完整，請確認聯盟、賽段、主客隊都有選' }, { status: 400 });
@@ -37,6 +57,7 @@ export async function POST(request: Request) {
       const { error } = await supabase.from('games').insert([{
         league_id: leagueId,
         stage,
+        group_name: groupName || null,
         game_number: gameNumber || null,
         game_date: gameDate || null,
         home_team_id: homeTeamId,
