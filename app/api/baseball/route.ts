@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     const { action } = body;
 
     // 這幾個 action 都會寫入/刪除資料，一律要求先登入
-    const writeActions = ['addTeam', 'addPlayersBulk', 'addStatsBulk', 'deletePlayer', 'deleteStat'];
+    const writeActions = ['addTeam', 'addPlayersBulk', 'addStatsBulk', 'deletePlayer', 'deleteStat', 'updateTeam', 'updatePlayer'];
     const email = writeActions.includes(action) ? await getUserEmail() : null;
 
     if (writeActions.includes(action) && !email) {
@@ -78,6 +78,42 @@ export async function POST(request: Request) {
         { error: '此功能已停用，請直接於 Supabase 後台新增球隊' },
         { status: 403 }
       );
+    }
+
+    // 修改球隊名稱（只有對該球隊有權限的 email 才能改）
+    if (action === 'updateTeam') {
+      const { teamId, teamName } = body;
+      const name = (teamName || '').trim();
+      if (!name) return NextResponse.json({ error: '球隊名稱不能空白' }, { status: 400 });
+
+      const ok = await hasTeamPermission(email, teamId);
+      if (!ok) return NextResponse.json({ error: '您沒有權限修改該球隊' }, { status: 403 });
+
+      const { error } = await supabase.from('teams').update({ team_name: name }).eq('id', teamId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ success: true });
+    }
+
+    // 修改球員姓名／背號（只有對該球員所屬球隊有權限的 email 才能改）
+    if (action === 'updatePlayer') {
+      const { playerId, playerName, jerseyNumber } = body;
+      const name = (playerName || '').trim();
+      if (!name) return NextResponse.json({ error: '球員姓名不能空白' }, { status: 400 });
+
+      const { data: player, error: findErr } = await supabase
+        .from('players').select('team_id').eq('id', playerId).maybeSingle();
+      if (findErr) return NextResponse.json({ error: findErr.message }, { status: 400 });
+      if (!player) return NextResponse.json({ error: '找不到該球員' }, { status: 404 });
+
+      const ok = await hasTeamPermission(email, player.team_id);
+      if (!ok) return NextResponse.json({ error: '您沒有權限修改該球隊的球員' }, { status: 403 });
+
+      const { error } = await supabase.from('players').update({
+        player_name: name,
+        jersey_number: jerseyNumber === '' || jerseyNumber === null || jerseyNumber === undefined ? null : Number(jerseyNumber),
+      }).eq('id', playerId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ success: true });
     }
 
     // 1. 批量新增球員（只有對該球隊有權限的 email 才能新增）

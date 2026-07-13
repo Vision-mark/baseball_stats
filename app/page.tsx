@@ -197,6 +197,9 @@ export default function Home() {
   // 彈出視窗狀態
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [showManagePlayersModal, setShowManagePlayersModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTeamNames, setEditTeamNames] = useState<Record<string, string>>({});
+  const [editPlayers, setEditPlayers] = useState<Record<string, { name: string; number: string }>>({});
 
   // 批量新增球員
   const [bulkTeamId, setBulkTeamId] = useState('');
@@ -972,6 +975,45 @@ const aggregateStats = (allStats: any[]) => {
   });
 };
 
+  useEffect(() => {
+    if (!showEditModal) return;
+    const teamNames: Record<string, string> = {};
+    teams.filter(t => canManageTeam(t.id)).forEach(t => { teamNames[t.id] = t.team_name; });
+    setEditTeamNames(teamNames);
+
+    const playerEdits: Record<string, { name: string; number: string }> = {};
+    players.filter(p => canManageTeam(p.team_id)).forEach(p => {
+      playerEdits[p.id] = { name: p.player_name, number: p.jersey_number ?? '' };
+    });
+    setEditPlayers(playerEdits);
+  }, [showEditModal, teams, players]);
+
+  const handleUpdateTeamName = async (teamId: string) => {
+    const teamName = editTeamNames[teamId];
+    const res = await fetch('/api/baseball', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'updateTeam', teamId, teamName }),
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || '更新失敗');
+    fetchAllData();
+    alert('球隊名稱已更新');
+  };
+
+  const handleUpdatePlayer = async (playerId: string) => {
+    const edit = editPlayers[playerId];
+    const res = await fetch('/api/baseball', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'updatePlayer', playerId, playerName: edit.name, jerseyNumber: edit.number }),
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || '更新失敗');
+    fetchAllData();
+    alert('球員資料已更新');
+  };
+
   const handleAddPlayersBulk = async (e: React.FormEvent) => {
     e.preventDefault();
     const formattedList = bulkPlayers
@@ -1091,6 +1133,9 @@ const aggregateStats = (allStats: any[]) => {
             </button>
             <button onClick={() => setShowManagePlayersModal(true)} className="bg-[#C1443A] hover:bg-[#A93A31] px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
               ⚙️ 管理球員
+            </button>
+            <button onClick={() => setShowEditModal(true)} className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+              ✎ 編輯球隊 / 球員
             </button>
           </div>
         )}
@@ -1597,6 +1642,84 @@ const aggregateStats = (allStats: any[]) => {
 
             <button
               onClick={() => setShowManagePlayersModal(false)}
+              className="mt-8 w-full py-4 bg-[#232B2E] hover:bg-[#333E41] rounded-lg transition-colors"
+            >
+              關閉視窗
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#1A2124] border border-[#333E41] rounded-lg w-full max-w-2xl p-8 max-h-[85vh] overflow-y-auto">
+            <h3 className="font-display text-3xl tracking-wide mb-6">✎ 編輯球隊 / 球員</h3>
+
+            {/* 球隊名稱 */}
+            <h4 className="text-sm font-semibold text-[#9BA5A4] mb-3">球隊名稱</h4>
+            <div className="space-y-3 mb-8">
+              {teams.filter(t => canManageTeam(t.id)).map(t => (
+                <div key={t.id} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editTeamNames[t.id] ?? ''}
+                    onChange={(e) => setEditTeamNames({ ...editTeamNames, [t.id]: e.target.value })}
+                    className="flex-1 bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#D98E3F]"
+                  />
+                  <button
+                    onClick={() => handleUpdateTeamName(t.id)}
+                    className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    儲存
+                  </button>
+                </div>
+              ))}
+              {teams.filter(t => canManageTeam(t.id)).length === 0 && (
+                <p className="text-xs text-[#6C7574]">您目前沒有任何球隊的編輯權限。</p>
+              )}
+            </div>
+
+            {/* 球員姓名 / 背號 */}
+            <h4 className="text-sm font-semibold text-[#9BA5A4] mb-3">球員姓名 / 背號</h4>
+            <div className="space-y-3">
+              {players.filter(p => canManageTeam(p.team_id)).map(p => {
+                const tName = teams.find(t => t.id === p.team_id)?.team_name || '未分類';
+                const posName = p.position_type === 'pitcher' ? '投手' : '野手';
+                const edit = editPlayers[p.id] || { name: '', number: '' };
+                return (
+                  <div key={p.id} className="bg-[#12181B] border border-[#333E41] rounded-lg p-4">
+                    <div className="text-xs text-[#9BA5A4] mb-2">{posName} • {tName}</div>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        value={edit.number}
+                        onChange={(e) => setEditPlayers({ ...editPlayers, [p.id]: { ...edit, number: e.target.value } })}
+                        placeholder="背號"
+                        className="w-20 bg-[#232B2E] border border-[#333E41] rounded-lg px-3 py-2.5 text-sm text-center focus:outline-none focus:border-[#D98E3F]"
+                      />
+                      <input
+                        type="text"
+                        value={edit.name}
+                        onChange={(e) => setEditPlayers({ ...editPlayers, [p.id]: { ...edit, name: e.target.value } })}
+                        className="flex-1 bg-[#232B2E] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#D98E3F]"
+                      />
+                      <button
+                        onClick={() => handleUpdatePlayer(p.id)}
+                        className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        儲存
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {players.filter(p => canManageTeam(p.team_id)).length === 0 && (
+                <p className="text-xs text-[#6C7574]">您目前沒有任何球隊的編輯權限。</p>
+              )}
+            </div>
+
+            <button
+              onClick={() => setShowEditModal(false)}
               className="mt-8 w-full py-4 bg-[#232B2E] hover:bg-[#333E41] rounded-lg transition-colors"
             >
               關閉視窗
