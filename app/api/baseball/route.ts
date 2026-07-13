@@ -154,6 +154,7 @@ export async function POST(request: Request) {
             player_id: playerId,
             game_id: gameId || null,
             game_date: gameDate || new Date().toISOString(),
+            pa: stats.pa,
             ab: stats.ab,
             h: stats.h,
             single: stats.single,

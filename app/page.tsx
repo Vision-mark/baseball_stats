@@ -276,6 +276,7 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
         tb:0,
         r:0,
         rbi:0,
+        pa:0,
 
         single:0,
         double:0,
@@ -360,6 +361,7 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
     else {
 
       p.ab += Number(s.ab || 0);
+      p.pa += Number(s.pa || 0);
 
       const hit =
         Number(s.h || 0) ||
@@ -469,17 +471,25 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
       ?p.tb/p.ab
       :0;
 
+    // 優先用實際填寫並加總的打席數字；只有完全沒填過（例如很舊的資料）才退回用公式估算
+    const pa = p.pa > 0 ? p.pa : (p.ab + p.bb + p.sf);
+
+    const obpDenom = p.ab + p.bb + p.sf;
+    const obp = obpDenom > 0 ? (p.h + p.bb) / obpDenom : 0;
+
     return{
 
       ...p,
 
-      pa:p.ab+p.bb+p.sf,
+      pa,
 
       avg:avg.toFixed(3),
 
+      obp:obp.toFixed(3),
+
       slg:slg.toFixed(3),
 
-      ops:(avg+slg).toFixed(3),
+      ops:(obp+slg).toFixed(3),
 
       game_date:"累計"
 
@@ -1162,7 +1172,7 @@ const aggregateStats = (allStats: any[]) => {
                                   <div className="grid grid-cols-8 gap-2 text-xs">
                                     {['w', 'l', 'ip', 'h', 'r', 'er', 'bb', 'so'].map(key => (
                                       <div key={key} className="flex flex-col">
-                                        <span className="text-[10px] text-[#6C7574] uppercase">{key}</span>
+                                        <span className="text-[10px] text-[#6C7574] uppercase">{key === 'bb' ? '四死球' : key}</span>
                                         <input 
                                           type="number" 
                                           step="0.1" 
@@ -1194,10 +1204,10 @@ const aggregateStats = (allStats: any[]) => {
                                 <td className="py-4 px-4 text-xs text-[#7FB4D6]">野手</td>
                                 <td className="py-4 px-4">
                                   <div className="grid grid-cols-6 gap-2 text-xs">   {/* 已調整為6欄 */}
-                                    {['ab', 'single', 'double', 'triple', 'hr', 'bb', 'sf', 'so', 'r', 'rbi', 'sb'].map(key => (
+                                    {['pa', 'ab', 'single', 'double', 'triple', 'hr', 'bb', 'sf', 'so', 'r', 'rbi', 'sb'].map(key => (
                                       <div key={key} className="flex flex-col">
                                         <span className="text-[10px] text-[#6C7574] uppercase">
-                                          {key === 'sb' ? 'SB' : key}
+                                          {key === 'sb' ? 'SB' : key === 'pa' ? '打席' : key === 'bb' ? '四死球' : key}
                                         </span>
                                         <input 
                                           type="number" 
@@ -1270,7 +1280,7 @@ const aggregateStats = (allStats: any[]) => {
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">打點</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">得分</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三振</th>
-                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">保送</th>
+                  <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">四死球</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">盜壘</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">一安</th>
                   <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">二安</th>
@@ -1392,7 +1402,7 @@ const aggregateStats = (allStats: any[]) => {
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">安打</th>
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">全壘打</th>
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">三振</th>
-                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">保送</th>
+                    <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">四死球</th>
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">失分</th>
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">責失分</th>
                     <th className="text-center py-3.5 px-6 text-xs uppercase tracking-wider text-[#9BA5A4] font-semibold">ERA</th>
@@ -1422,7 +1432,8 @@ const aggregateStats = (allStats: any[]) => {
                       } else {
                         const outs = ipToOuts(Number(stat.ip || 0));
                         if (outs > 0) {
-                          displayEra = ((Number(stat.er || 0) * 27) / outs).toFixed(2);
+                          // 這個聯盟比賽是打7局制，ERA 用「responsible earned runs * 7 / 局數」換算，不是傳統MLB的9局
+                          displayEra = ((Number(stat.er || 0) * 21) / outs).toFixed(2);
                           displayWhip = (((Number(stat.bb || 0) + Number(stat.h || 0)) * 3) / outs).toFixed(2);
                         }
                       }

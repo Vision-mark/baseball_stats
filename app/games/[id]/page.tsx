@@ -11,7 +11,7 @@ function ipToOuts(ip: number) {
 }
 
 type FielderStatFields = {
-  ab: string; h: string; single: string; double: string; triple: string; hr: string;
+  pa: string; ab: string; h: string; single: string; double: string; triple: string; hr: string;
   r: string; rbi: string; so: string; bb: string; sf: string; sb: string;
 };
 
@@ -25,7 +25,7 @@ type PitcherStatFields = {
 type PitcherEntry = { key: string; playerId: string; stats: PitcherStatFields };
 
 const emptyFielderStats = (): FielderStatFields => ({
-  ab: '', h: '', single: '', double: '', triple: '', hr: '', r: '', rbi: '', so: '', bb: '', sf: '', sb: ''
+  pa: '', ab: '', h: '', single: '', double: '', triple: '', hr: '', r: '', rbi: '', so: '', bb: '', sf: '', sb: ''
 });
 
 const emptyPitcherStats = (): PitcherStatFields => ({
@@ -42,7 +42,7 @@ function buildInitialLineup(lineupEntries: any[], fielderStats: any[]): LineupRo
       subOrder: e.sub_order,
       playerId: e.player_id,
       stats: existingStat ? {
-        ab: String(existingStat.ab ?? ''), h: String(existingStat.h ?? ''),
+        pa: String(existingStat.pa ?? ''), ab: String(existingStat.ab ?? ''), h: String(existingStat.h ?? ''),
         single: String(existingStat.single ?? ''), double: String(existingStat.double ?? ''),
         triple: String(existingStat.triple ?? ''), hr: String(existingStat.hr ?? ''),
         r: String(existingStat.r ?? ''), rbi: String(existingStat.rbi ?? ''),
@@ -76,19 +76,19 @@ function buildInitialPitchers(pitcherStats: any[]): PitcherEntry[] {
 }
 
 const FIELDER_STAT_FIELDS: { key: keyof FielderStatFields; label: string }[] = [
-  { key: 'ab', label: '打數' }, { key: 'h', label: '安打' }, { key: 'rbi', label: '打點' },
-  { key: 'r', label: '得分' }, { key: 'so', label: '三振' }, { key: 'bb', label: '保送' },
+  { key: 'pa', label: '打席' }, { key: 'ab', label: '打數' }, { key: 'h', label: '安打' }, { key: 'rbi', label: '打點' },
+  { key: 'r', label: '得分' }, { key: 'so', label: '三振' }, { key: 'bb', label: '四死球' },
   { key: 'sb', label: '盜壘' }, { key: 'single', label: '一安' }, { key: 'double', label: '二安' },
   { key: 'triple', label: '三安' }, { key: 'hr', label: '全壘打' }, { key: 'sf', label: '犧飛' },
 ];
 
 const PITCHER_STAT_FIELDS: { key: keyof PitcherStatFields; label: string }[] = [
   { key: 'ip', label: '局數' }, { key: 'bf', label: '打席' }, { key: 'h', label: '安打' },
-  { key: 'hr', label: '全壘打' }, { key: 'so', label: '三振' }, { key: 'bb', label: '保送' },
+  { key: 'hr', label: '全壘打' }, { key: 'so', label: '三振' }, { key: 'bb', label: '四死球' },
   { key: 'r', label: '失分' }, { key: 'er', label: '責失分' },
 ];
 
-const INNINGS = Array.from({ length: 9 }, (_, i) => i + 1);
+const INNINGS = Array.from({ length: 7 }, (_, i) => i + 1);
 
 export default function GameDetailPage() {
   const params = useParams();
@@ -135,34 +135,28 @@ export default function GameDetailPage() {
 
   // ---- 資料讀取 ----
   const fetchAll = async () => {
-    const [gameRes, teamsRes, lineupRes, scoreRes, gameStatsRes] = await Promise.all([
-      fetch(`/api/games?id=${gameId}`).then(r => r.json()),
-      fetch('/api/teams').then(r => r.json()),
-      fetch(`/api/lineups?game_id=${gameId}`).then(r => r.json()),
-      fetch(`/api/scoreboard?game_id=${gameId}`).then(r => r.json()),
-      fetch(`/api/game-stats?game_id=${gameId}`).then(r => r.json()),
-    ]);
+    const data = await fetch(`/api/game-detail?id=${gameId}`).then(r => r.json());
 
-    const g = gameRes.games?.[0] || null;
+    const g = data.game || null;
     setGame(g);
-    setTeams(teamsRes.teams || []);
-    setPlayers(teamsRes.players || []);
+    setTeams(data.teams || []);
+    setPlayers(data.players || []);
 
-    const gameFielderStats = gameStatsRes.fielderStats || [];
-    const gamePitcherStats = gameStatsRes.pitcherStats || [];
+    const gameFielderStats = data.fielderStats || [];
+    const gamePitcherStats = data.pitcherStats || [];
 
     if (g) {
-      const homeEntries = (lineupRes.lineups || []).filter((e: any) => e.team_id === g.home_team_id);
-      const awayEntries = (lineupRes.lineups || []).filter((e: any) => e.team_id === g.away_team_id);
+      const homeEntries = (data.lineups || []).filter((e: any) => e.team_id === g.home_team_id);
+      const awayEntries = (data.lineups || []).filter((e: any) => e.team_id === g.away_team_id);
       setHomeLineup(buildInitialLineup(homeEntries, gameFielderStats));
       setAwayLineup(buildInitialLineup(awayEntries, gameFielderStats));
 
       const homePitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (teamsRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+        const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
         return p && p.team_id === g.home_team_id;
       });
       const awayPitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (teamsRes.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+        const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
         return p && p.team_id === g.away_team_id;
       });
       setHomePitchers(buildInitialPitchers(homePitcherStats));
@@ -172,7 +166,7 @@ export default function GameDetailPage() {
     }
 
     const scoreMap: Record<string, Record<number, number>> = {};
-    (scoreRes.scores || []).forEach((s: any) => {
+    (data.scores || []).forEach((s: any) => {
       if (!scoreMap[s.team_id]) scoreMap[s.team_id] = {};
       scoreMap[s.team_id][s.inning] = s.runs;
     });
@@ -273,6 +267,7 @@ export default function GameDetailPage() {
       const fielderStatsList = lineup.flatMap(row =>
         row.subs.filter(s => s.playerId).map(s => ({
           playerId: s.playerId, gameId, gameDate, type: 'fielder',
+          pa: Number(s.stats.pa) || 0,
           ab: Number(s.stats.ab) || 0, h: Number(s.stats.h) || 0,
           single: Number(s.stats.single) || 0, double: Number(s.stats.double) || 0,
           triple: Number(s.stats.triple) || 0, hr: Number(s.stats.hr) || 0,
@@ -312,32 +307,53 @@ export default function GameDetailPage() {
     }
   };
 
-  // ---- 記分板操作 ----
-  const handleInningChange = (teamId: string, inning: number, value: string) => {
-    setScores(prev => ({ ...prev, [teamId]: { ...(prev[teamId] || {}), [inning]: value === '' ? 0 : Number(value) } }));
-  };
+  // ---- 記分板操作：本機先編輯，按「儲存記分板」才一次送出 ----
+  const [savingScoreboard, setSavingScoreboard] = useState<string | null>(null);
 
-  const saveInning = async (teamId: string, inning: number) => {
-    const runs = scores[teamId]?.[inning] ?? 0;
-    const res = await fetch('/api/scoreboard', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveInning', gameId, teamId, inning, runs }),
+  const handleInningChange = (teamId: string, inning: number, value: string) => {
+    setScores(prev => {
+      const teamScores = { ...(prev[teamId] || {}) };
+      if (value === '') {
+        delete teamScores[inning];
+      } else {
+        teamScores[inning] = Number(value);
+      }
+      return { ...prev, [teamId]: teamScores };
     });
-    const data = await res.json();
-    if (!res.ok) alert(data.error || '儲存失敗');
   };
 
   const handleHitsChange = (teamId: string, value: string) => {
     setHits(prev => ({ ...prev, [teamId]: value === '' ? 0 : Number(value) }));
   };
 
-  const saveHits = async (teamId: string) => {
-    const res = await fetch('/api/scoreboard', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'saveHits', gameId, teamId, hits: hits[teamId] || 0 }),
-    });
-    const data = await res.json();
-    if (!res.ok) alert(data.error || '儲存失敗');
+  const handleSaveScoreboard = async (teamId: string) => {
+    setSavingScoreboard(teamId);
+    try {
+      const teamScores = scores[teamId] || {};
+      // 只送有填數字的那幾局；沒填的局次不會建立資料列，畫面上就會顯示「-」代表沒打
+      const inningCalls = INNINGS.filter(inning => teamScores[inning] !== undefined).map(inning =>
+        fetch('/api/scoreboard', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'saveInning', gameId, teamId, inning, runs: teamScores[inning] }),
+        }).then(r => r.json())
+      );
+
+      const hitsCall = fetch('/api/scoreboard', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveHits', gameId, teamId, hits: hits[teamId] || 0 }),
+      }).then(r => r.json());
+
+      const results = await Promise.all([...inningCalls, hitsCall]);
+      const firstError = results.find((r: any) => r?.error);
+      if (firstError) throw new Error(firstError.error);
+
+      alert(`${teamName(teamId)} 的記分板已儲存`);
+      fetchAll();
+    } catch (err: any) {
+      alert(err.message || '儲存失敗');
+    } finally {
+      setSavingScoreboard(null);
+    }
   };
 
   if (loading) return <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex items-center justify-center">載入中...</div>;
@@ -462,7 +478,7 @@ export default function GameDetailPage() {
           <tbody>
             {pitchers.map((p, idx) => {
               const outs = ipToOuts(Number(p.stats.ip) || 0);
-              const era = outs > 0 ? ((Number(p.stats.er) || 0) * 27 / outs).toFixed(2) : '-';
+              const era = outs > 0 ? ((Number(p.stats.er) || 0) * 21 / outs).toFixed(2) : '-';
               const whip = outs > 0 ? (((Number(p.stats.bb) || 0) + (Number(p.stats.h) || 0)) * 3 / outs).toFixed(2) : '-';
 
               return (
@@ -580,6 +596,7 @@ export default function GameDetailPage() {
                 {INNINGS.map(i => <th key={i} className="px-3 py-2 text-center">{i}</th>)}
                 <th className="px-3 py-2 text-center text-[#D98E3F]">R</th>
                 <th className="px-3 py-2 text-center text-[#D98E3F]">H</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -595,7 +612,7 @@ export default function GameDetailPage() {
                             type="number"
                             value={scores[teamId]?.[inning] ?? ''}
                             onChange={(e) => handleInningChange(teamId, inning, e.target.value)}
-                            onBlur={() => saveInning(teamId, inning)}
+                            placeholder="-"
                             className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
                           />
                         ) : (
@@ -610,11 +627,21 @@ export default function GameDetailPage() {
                           type="number"
                           value={hits[teamId] ?? ''}
                           onChange={(e) => handleHitsChange(teamId, e.target.value)}
-                          onBlur={() => saveHits(teamId)}
                           className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
                         />
                       ) : (
                         <span>{hits[teamId] ?? 0}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {editable && (
+                        <button
+                          onClick={() => handleSaveScoreboard(teamId)}
+                          disabled={savingScoreboard === teamId}
+                          className="bg-[#4F86A6] hover:bg-[#3E6F8C] disabled:opacity-50 px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap"
+                        >
+                          {savingScoreboard === teamId ? '儲存中...' : '儲存記分板'}
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -622,6 +649,7 @@ export default function GameDetailPage() {
               })}
             </tbody>
           </table>
+          <p className="text-xs text-[#6C7574] mt-3">留空代表該局還沒打，會顯示「-」；填 0 才代表該局有打但沒得分。</p>
         </div>
 
         {/* 簡表：有編輯權限時維持原本堆疊順序（主隊→客隊，各自野手→投手）方便輸入；
