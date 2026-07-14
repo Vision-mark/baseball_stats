@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import NavBar from '@/components/NavBar';
 
 const STAGES = ['初賽', '複賽', '決賽'];
 
@@ -78,19 +79,18 @@ export default function SchedulePage() {
   };
 
   const fetchLeagues = async () => {
-    const res = await fetch('/api/leagues');
+    const res = await fetch('/api/schedule-init');
     const data = await res.json();
     const sorted = sortLeagues(data.leagues || []);
     setLeagues(sorted);
+    setTeams(data.teams || []);
     if (!selectedLeagueId && sorted.length > 0) {
       setSelectedLeagueId(sorted[0].id);
     }
   };
 
   const fetchTeams = async () => {
-    const res = await fetch('/api/teams');
-    const data = await res.json();
-    setTeams(data.teams || []);
+    // 已經在 fetchLeagues 裡一起拿了，這裡保留是為了給「新增聯盟」後單獨刷新聯盟用
   };
 
   const fetchGames = async (leagueId: string) => {
@@ -176,15 +176,10 @@ export default function SchedulePage() {
   return (
     <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] font-body">
       <div className="max-w-5xl mx-auto px-6 py-10">
+        <NavBar />
         <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
           <div>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1.5 bg-[#232B2E] hover:bg-[#333E41] border border-[#333E41] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              ← 回首頁
-            </Link>
-            <h1 className="font-display text-4xl tracking-wide mt-2">賽程管理</h1>
+            <h1 className="font-display text-4xl tracking-wide">賽程管理</h1>
           </div>
 
           {!authLoading && (

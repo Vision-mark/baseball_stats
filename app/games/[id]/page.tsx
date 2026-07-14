@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import NavBar from '@/components/NavBar';
 
 function ipToOuts(ip: number) {
   const whole = Math.floor(ip);
@@ -134,45 +135,57 @@ export default function GameDetailPage() {
   };
 
   // ---- 資料讀取 ----
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const fetchAll = async () => {
-    const data = await fetch(`/api/game-detail?id=${gameId}`).then(r => r.json());
+    setLoadError(null);
+    try {
+      const res = await fetch(`/api/game-detail?id=${gameId}`);
+      if (!res.ok) {
+        throw new Error(`載入失敗（狀態碼 ${res.status}），請確認 app/api/game-detail/route.ts 這支檔案有正確部署`);
+      }
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
 
-    const g = data.game || null;
-    setGame(g);
-    setTeams(data.teams || []);
-    setPlayers(data.players || []);
+      const g = data.game || null;
+      setGame(g);
+      setTeams(data.teams || []);
+      setPlayers(data.players || []);
 
-    const gameFielderStats = data.fielderStats || [];
-    const gamePitcherStats = data.pitcherStats || [];
+      const gameFielderStats = data.fielderStats || [];
+      const gamePitcherStats = data.pitcherStats || [];
 
-    if (g) {
-      const homeEntries = (data.lineups || []).filter((e: any) => e.team_id === g.home_team_id);
-      const awayEntries = (data.lineups || []).filter((e: any) => e.team_id === g.away_team_id);
-      setHomeLineup(buildInitialLineup(homeEntries, gameFielderStats));
-      setAwayLineup(buildInitialLineup(awayEntries, gameFielderStats));
+      if (g) {
+        const homeEntries = (data.lineups || []).filter((e: any) => e.team_id === g.home_team_id);
+        const awayEntries = (data.lineups || []).filter((e: any) => e.team_id === g.away_team_id);
+        setHomeLineup(buildInitialLineup(homeEntries, gameFielderStats));
+        setAwayLineup(buildInitialLineup(awayEntries, gameFielderStats));
 
-      const homePitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
-        return p && p.team_id === g.home_team_id;
+        const homePitcherStats = gamePitcherStats.filter((s: any) => {
+          const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+          return p && p.team_id === g.home_team_id;
+        });
+        const awayPitcherStats = gamePitcherStats.filter((s: any) => {
+          const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
+          return p && p.team_id === g.away_team_id;
+        });
+        setHomePitchers(buildInitialPitchers(homePitcherStats));
+        setAwayPitchers(buildInitialPitchers(awayPitcherStats));
+
+        setHits({ [g.home_team_id]: g.home_hits || 0, [g.away_team_id]: g.away_hits || 0 });
+      }
+
+      const scoreMap: Record<string, Record<number, number>> = {};
+      (data.scores || []).forEach((s: any) => {
+        if (!scoreMap[s.team_id]) scoreMap[s.team_id] = {};
+        scoreMap[s.team_id][s.inning] = s.runs;
       });
-      const awayPitcherStats = gamePitcherStats.filter((s: any) => {
-        const p = (data.players || []).find((pl: any) => String(pl.id) === String(s.player_id));
-        return p && p.team_id === g.away_team_id;
-      });
-      setHomePitchers(buildInitialPitchers(homePitcherStats));
-      setAwayPitchers(buildInitialPitchers(awayPitcherStats));
-
-      setHits({ [g.home_team_id]: g.home_hits || 0, [g.away_team_id]: g.away_hits || 0 });
+      setScores(scoreMap);
+    } catch (err: any) {
+      setLoadError(err.message || '載入失敗');
+    } finally {
+      setLoading(false);
     }
-
-    const scoreMap: Record<string, Record<number, number>> = {};
-    (data.scores || []).forEach((s: any) => {
-      if (!scoreMap[s.team_id]) scoreMap[s.team_id] = {};
-      scoreMap[s.team_id][s.inning] = s.runs;
-    });
-    setScores(scoreMap);
-
-    setLoading(false);
   };
 
   useEffect(() => { fetchAll(); }, [gameId]);
@@ -357,6 +370,12 @@ export default function GameDetailPage() {
   };
 
   if (loading) return <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex items-center justify-center">載入中...</div>;
+  if (loadError) return (
+    <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="text-[#E2897E]">{loadError}</p>
+      <Link href="/schedule" className="text-sm text-[#4F86A6] hover:text-[#6FA0C0]">← 回賽程列表</Link>
+    </div>
+  );
   if (!game) return <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex items-center justify-center">找不到這場比賽</div>;
 
   const renderFielderTable = (side: 'home' | 'away') => {
@@ -558,10 +577,11 @@ export default function GameDetailPage() {
   return (
     <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] font-body">
       <div className="max-w-[1600px] mx-auto px-6 py-10">
+        <NavBar />
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <Link
             href="/schedule"
-            className="inline-flex items-center gap-1.5 bg-[#232B2E] hover:bg-[#333E41] border border-[#333E41] px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="text-sm text-[#9BA5A4] hover:text-[#EDEAE2]"
           >
             ← 回賽程列表
           </Link>
