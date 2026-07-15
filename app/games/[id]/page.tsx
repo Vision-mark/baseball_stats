@@ -474,7 +474,7 @@ export default function GameDetailPage() {
     const teamId = side === 'home' ? game.home_team_id : game.away_team_id;
     const pitchers = side === 'home' ? homePitchers : awayPitchers;
     const editable = canManageTeam(teamId);
-    const roster = teamPlayers(teamId, 'pitcher');
+    const roster = teamPlayers(teamId);
 
     return (
       <div className={`bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-6 ${editable ? 'overflow-x-auto' : ''}`}>
