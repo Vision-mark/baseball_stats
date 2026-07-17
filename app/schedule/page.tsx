@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import NavBar from '@/components/NavBar';
+import ThemeStyles from '@/components/ThemeStyles';
 
 const STAGES = ['初賽', '複賽', '決賽'];
 
@@ -57,6 +58,12 @@ export default function SchedulePage() {
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/schedule` }
     });
+  };
+
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    setUser(null);
+    setIsSuperAdmin(false);
   };
 
   // ---- 資料讀取 ----
@@ -174,8 +181,9 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] font-body">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-body">
       <div className="max-w-5xl mx-auto px-6 py-10">
+        <ThemeStyles />
         <NavBar />
         <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
           <div>
@@ -184,16 +192,23 @@ export default function SchedulePage() {
 
           {!authLoading && (
             user ? (
-              <div className="flex items-center gap-2 bg-[#1A2124] px-4 py-2.5 rounded-lg border border-[#333E41] text-sm">
-                <span className="text-[#9BA5A4]">{user.email}</span>
-                <span className={isSuperAdmin ? 'text-[#7FBF95] font-semibold' : 'text-[#9BA5A4]'}>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-[var(--text-muted)]">{user.email}</span>
+                <span className={isSuperAdmin ? 'text-[#7FBF95] font-semibold' : 'text-[var(--text-muted)]'}>
                   {isSuperAdmin ? '（聯盟管理員）' : '（無排賽程權限）'}
                 </span>
+                <span className="text-[var(--border-default)]">|</span>
+                <button
+                  onClick={handleLogout}
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors"
+                >
+                  登出
+                </button>
               </div>
             ) : (
               <button
                 onClick={handleGoogleLogin}
-                className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm transition-colors font-medium"
+                className="text-sm text-[#4F86A6] hover:text-[#6FA0C0] hover:underline transition-colors"
               >
                 使用 Google 登入
               </button>
@@ -202,11 +217,11 @@ export default function SchedulePage() {
         </div>
 
         {loading ? (
-          <p className="text-[#9BA5A4]">載入中...</p>
+          <p className="text-[var(--text-muted)]">載入中...</p>
         ) : (
           <>
             {/* 聯盟選擇 / 新增 */}
-            <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-8">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-8">
               <h2 className="font-display text-2xl tracking-wide mb-4">聯盟</h2>
               <div className="flex flex-wrap gap-2 mb-4">
                 {leagues.map(l => (
@@ -216,7 +231,7 @@ export default function SchedulePage() {
                       className={`px-4 py-2 rounded-l-lg text-sm border ${
                         selectedLeagueId === l.id
                           ? 'bg-[#4F86A6] border-[#4F86A6] text-white'
-                          : 'bg-[#12181B] border-[#333E41] text-[#9BA5A4] hover:text-[#EDEAE2]'
+                          : 'bg-[var(--bg-page)] border-[var(--border-default)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
                       }`}
                     >
                       {l.name}
@@ -224,14 +239,14 @@ export default function SchedulePage() {
                     {isSuperAdmin && (
                       <button
                         onClick={() => handleDeleteLeague(l.id)}
-                        className="px-3 py-2 rounded-r-lg text-sm border border-l-0 border-[#333E41] bg-[#12181B] text-[#E2897E] hover:text-[#F2A89C]"
+                        className="px-3 py-2 rounded-r-lg text-sm border border-l-0 border-[var(--border-default)] bg-[var(--bg-page)] text-[#E2897E] hover:text-[#F2A89C]"
                       >
                         ×
                       </button>
                     )}
                   </div>
                 ))}
-                {leagues.length === 0 && <p className="text-sm text-[#9BA5A4]">還沒有任何聯盟。</p>}
+                {leagues.length === 0 && <p className="text-sm text-[var(--text-muted)]">還沒有任何聯盟。</p>}
               </div>
 
               {isSuperAdmin && (
@@ -241,7 +256,7 @@ export default function SchedulePage() {
                     value={newLeagueName}
                     onChange={(e) => setNewLeagueName(e.target.value)}
                     placeholder="新增聯盟名稱，例如：2026 夏季聯賽"
-                    className="flex-1 bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#D98E3F]"
+                    className="flex-1 bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#D98E3F]"
                   />
                   <button type="submit" className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm font-medium">
                     新增聯盟
@@ -252,13 +267,13 @@ export default function SchedulePage() {
 
             {/* 新增比賽場次 */}
             {isSuperAdmin && selectedLeagueId && (
-              <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-8">
+              <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-8">
                 <h2 className="font-display text-2xl tracking-wide mb-4">新增比賽場次</h2>
                 <form onSubmit={handleAddGame} className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <select
                     value={gameForm.stage}
                     onChange={(e) => setGameForm({ ...gameForm, stage: e.target.value })}
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                   >
                     {STAGES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -267,25 +282,25 @@ export default function SchedulePage() {
                     value={gameForm.groupName}
                     onChange={(e) => setGameForm({ ...gameForm, groupName: e.target.value })}
                     placeholder="組別（選填，例如 A組）"
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                   />
                   <input
                     type="text"
                     value={gameForm.gameNumber}
                     onChange={(e) => setGameForm({ ...gameForm, gameNumber: e.target.value })}
                     placeholder="場次，例如 G3"
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                   />
                   <input
                     type="date"
                     value={gameForm.gameDate}
                     onChange={(e) => setGameForm({ ...gameForm, gameDate: e.target.value })}
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                   />
                   <select
                     value={gameForm.homeTeamId}
                     onChange={(e) => setGameForm({ ...gameForm, homeTeamId: e.target.value })}
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                     required
                   >
                     <option value="">主隊</option>
@@ -294,7 +309,7 @@ export default function SchedulePage() {
                   <select
                     value={gameForm.awayTeamId}
                     onChange={(e) => setGameForm({ ...gameForm, awayTeamId: e.target.value })}
-                    className="bg-[#12181B] border border-[#333E41] rounded-lg px-4 py-2.5 text-sm"
+                    className="bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg px-4 py-2.5 text-sm"
                     required
                   >
                     <option value="">客隊</option>
@@ -308,10 +323,10 @@ export default function SchedulePage() {
             )}
 
             {/* 比賽列表：依賽段分組，賽段內再依組別分排 */}
-            <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6">
               <h2 className="font-display text-2xl tracking-wide mb-4">比賽列表</h2>
               {games.length === 0 ? (
-                <p className="text-sm text-[#9BA5A4]">這個聯盟目前還沒有排定的比賽。</p>
+                <p className="text-sm text-[var(--text-muted)]">這個聯盟目前還沒有排定的比賽。</p>
               ) : (
                 STAGES.filter(stage => games.some(g => g.stage === stage)).map(stage => {
                   const stageGames = games.filter(g => g.stage === stage);
@@ -325,14 +340,14 @@ export default function SchedulePage() {
                       {groupNames.map(groupName => (
                         <div key={groupName || '__none__'} className="mb-4 last:mb-0">
                           {groupName && (
-                            <p className="text-xs text-[#9BA5A4] mb-2">{groupName}</p>
+                            <p className="text-xs text-[var(--text-muted)] mb-2">{groupName}</p>
                           )}
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {stageGames.filter(g => (g.group_name || '') === groupName).map(g => (
                               <Link
                                 key={g.id}
                                 href={`/games/${g.id}`}
-                                className="block bg-[#12181B] border border-[#333E41] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors relative"
+                                className="block bg-[var(--bg-page)] border border-[var(--border-default)] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors relative"
                               >
                                 {isSuperAdmin && (
                                   <button
@@ -342,7 +357,7 @@ export default function SchedulePage() {
                                     刪除
                                   </button>
                                 )}
-                                <div className="flex items-center gap-2 text-xs text-[#9BA5A4] mb-2">
+                                <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-2">
                                   {g.game_number && <span>{g.game_number}</span>}
                                   {g.game_date && <span>{g.game_date}</span>}
                                 </div>

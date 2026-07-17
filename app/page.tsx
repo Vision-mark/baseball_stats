@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import NavBar from '@/components/NavBar';
+import ThemeStyles from '@/components/ThemeStyles';
 
 export default function HomePage() {
   const supabaseClient = createClient();
@@ -61,23 +62,25 @@ export default function HomePage() {
     .slice(0, 8);
 
   return (
-    <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] font-body p-6">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-body p-6">
       <div className="max-w-5xl mx-auto">
+        <ThemeStyles />
         <NavBar />
 
-        <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-6 mb-8 pb-6 border-b border-[#333E41]">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-6 mb-8 pb-6 border-b border-[var(--border-default)]">
           <div>
-            <span className="text-xs tracking-[0.3em] uppercase text-[#9BA5A4]">Team Stats Console</span>
+            <span className="text-xs tracking-[0.3em] uppercase text-[var(--text-muted)]">Team Stats Console</span>
             <h1 className="font-display text-3xl tracking-wide mt-1">最新比賽動態</h1>
           </div>
 
           {!authLoading && (
             user ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#9BA5A4] hidden sm:inline">{user.email}</span>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-[var(--text-muted)] hidden sm:inline">{user.email}</span>
+                <span className="text-[var(--border-default)]">|</span>
                 <button
                   onClick={handleLogout}
-                  className="bg-[#232B2E] hover:bg-[#333E41] px-5 py-2.5 rounded-lg text-sm border border-[#333E41] transition-colors font-medium"
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors"
                 >
                   登出
                 </button>
@@ -85,7 +88,7 @@ export default function HomePage() {
             ) : (
               <button
                 onClick={handleGoogleLogin}
-                className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm transition-colors font-medium"
+                className="text-sm text-[#4F86A6] hover:text-[#6FA0C0] hover:underline transition-colors"
               >
                 使用 Google 登入
               </button>
@@ -94,23 +97,23 @@ export default function HomePage() {
         </div>
 
         {loading ? (
-          <p className="text-[#9BA5A4]">載入中...</p>
+          <p className="text-[var(--text-muted)]">載入中...</p>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6">
               <h2 className="font-display text-xl tracking-wide mb-4 flex items-center gap-2">🏆 最近比賽結果</h2>
               {recentGames.length === 0 ? (
-                <p className="text-sm text-[#6C7574]">還沒有已完成的比賽紀錄。</p>
+                <p className="text-sm text-[var(--text-faint)]">還沒有已完成的比賽紀錄。</p>
               ) : (
                 <div className="space-y-2">
                   {recentGames.map(g => (
                     <Link
                       key={g.id}
                       href={`/games/${g.id}`}
-                      className="block bg-[#12181B] border border-[#333E41] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors"
+                      className="block bg-[var(--bg-page)] border border-[var(--border-default)] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors"
                     >
-                      <div className="flex items-center gap-2 text-xs text-[#9BA5A4] mb-1.5">
-                        <span className="px-2 py-0.5 rounded bg-[#232B2E] text-[#D98E3F] text-xs font-medium">{g.stage}</span>
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1.5">
+                        <span className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[#D98E3F] text-xs font-medium">{g.stage}</span>
                         {g.group_name && <span>{g.group_name}</span>}
                         <span>{g.game_date}</span>
                       </div>
@@ -128,26 +131,26 @@ export default function HomePage() {
               )}
             </div>
 
-            <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6">
               <h2 className="font-display text-xl tracking-wide mb-4 flex items-center gap-2">📅 近期賽程</h2>
               {upcomingGames.length === 0 ? (
-                <p className="text-sm text-[#6C7574]">目前沒有排定的比賽。</p>
+                <p className="text-sm text-[var(--text-faint)]">目前沒有排定的比賽。</p>
               ) : (
                 <div className="space-y-2">
                   {upcomingGames.map(g => (
                     <Link
                       key={g.id}
                       href={`/games/${g.id}`}
-                      className="block bg-[#12181B] border border-[#333E41] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors"
+                      className="block bg-[var(--bg-page)] border border-[var(--border-default)] hover:border-[#4F86A6] rounded-lg px-4 py-3 transition-colors"
                     >
-                      <div className="flex items-center gap-2 text-xs text-[#9BA5A4] mb-1.5">
-                        <span className="px-2 py-0.5 rounded bg-[#232B2E] text-[#D98E3F] text-xs font-medium">{g.stage}</span>
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-1.5">
+                        <span className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[#D98E3F] text-xs font-medium">{g.stage}</span>
                         {g.group_name && <span>{g.group_name}</span>}
                         {g.game_date ? <span>{g.game_date}</span> : <span>日期未定</span>}
                         {g.game_number && <span>{g.game_number}</span>}
                       </div>
                       <div className="text-sm font-medium">
-                        {teamName(g.away_team_id)} <span className="text-[#9BA5A4]">@</span> {teamName(g.home_team_id)}
+                        {teamName(g.away_team_id)} <span className="text-[var(--text-muted)]">@</span> {teamName(g.home_team_id)}
                       </div>
                     </Link>
                   ))}

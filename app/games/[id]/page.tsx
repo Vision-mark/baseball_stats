@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import NavBar from '@/components/NavBar';
+import ThemeStyles from '@/components/ThemeStyles';
 
 function ipToOuts(ip: number) {
   const whole = Math.floor(ip);
@@ -132,6 +133,11 @@ export default function GameDetailPage() {
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/auth/callback?next=/games/${gameId}` }
     });
+  };
+
+  const handleLogout = async () => {
+    await supabaseClient.auth.signOut();
+    setUser(null);
   };
 
   // ---- 資料讀取 ----
@@ -369,14 +375,14 @@ export default function GameDetailPage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex items-center justify-center">載入中...</div>;
+  if (loading) return <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center">載入中...</div>;
   if (loadError) return (
-    <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex flex-col items-center justify-center gap-4 px-6 text-center">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex flex-col items-center justify-center gap-4 px-6 text-center">
       <p className="text-[#E2897E]">{loadError}</p>
       <Link href="/schedule" className="text-sm text-[#4F86A6] hover:text-[#6FA0C0]">← 回賽程列表</Link>
     </div>
   );
-  if (!game) return <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] flex items-center justify-center">找不到這場比賽</div>;
+  if (!game) return <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center">找不到這場比賽</div>;
 
   const renderFielderTable = (side: 'home' | 'away') => {
     const teamId = side === 'home' ? game.home_team_id : game.away_team_id;
@@ -385,7 +391,7 @@ export default function GameDetailPage() {
     const roster = teamPlayers(teamId);
 
     return (
-      <div className={`bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-6 ${editable ? 'overflow-x-auto' : ''}`}>
+      <div className={`bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-6 ${editable ? 'overflow-x-auto' : ''}`}>
         <div className="flex items-center justify-between mb-4">
           <h3 className={`font-display tracking-wide ${editable ? 'text-2xl' : 'text-lg'}`}>{teamName(teamId)}（{side === 'home' ? '主隊' : '客隊'}）簡表 — 野手</h3>
           <span className="font-data text-2xl text-[#7FBF95]">{totalScore(teamId)}</span>
@@ -393,7 +399,7 @@ export default function GameDetailPage() {
 
         <table className={editable ? 'text-sm min-w-[1100px] w-full' : 'text-xs w-full table-fixed'}>
           <thead>
-            <tr className="text-[#9BA5A4] border-b border-[#333E41]">
+            <tr className="text-[var(--text-muted)] border-b border-[var(--border-default)]">
               <th className={`text-left py-2 px-2 ${editable ? 'w-10' : 'w-6'}`}>棒次</th>
               <th className={`text-left py-2 px-2 ${editable ? 'min-w-[160px]' : 'min-w-[64px]'}`}>球員</th>
               {FIELDER_STAT_FIELDS.map(f => (
@@ -404,8 +410,8 @@ export default function GameDetailPage() {
           </thead>
           <tbody>
             {lineup.map(row => row.subs.map((sub, idx) => (
-              <tr key={`${row.battingOrder}-${sub.subOrder}`} className="border-b border-[#2A3336]">
-                <td className="py-1.5 px-2 font-data text-[#9BA5A4]">
+              <tr key={`${row.battingOrder}-${sub.subOrder}`} className="border-b border-[var(--border-subtle)]">
+                <td className="py-1.5 px-2 font-data text-[var(--text-muted)]">
                   {idx === 0 ? row.battingOrder : <span className="text-xs text-[#D98E3F]">代打</span>}
                 </td>
                 <td className="py-1.5 px-2">
@@ -413,7 +419,7 @@ export default function GameDetailPage() {
                     <select
                       value={sub.playerId}
                       onChange={(e) => updateLineupPlayer(side, row.battingOrder, sub.subOrder, e.target.value)}
-                      className="w-full bg-[#12181B] border border-[#333E41] rounded px-2 py-1.5 text-sm"
+                      className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-2 py-1.5 text-sm"
                     >
                       <option value="">選擇球員</option>
                       {roster.map(p => (
@@ -431,7 +437,7 @@ export default function GameDetailPage() {
                         type="number"
                         value={sub.stats[f.key]}
                         onChange={(e) => updateLineupStat(side, row.battingOrder, sub.subOrder, f.key, e.target.value)}
-                        className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
+                        className="w-12 bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-1 py-1 text-center"
                       />
                     ) : (
                       <span className="block text-center">{sub.stats[f.key] || 0}</span>
@@ -477,13 +483,13 @@ export default function GameDetailPage() {
     const roster = teamPlayers(teamId);
 
     return (
-      <div className={`bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-6 ${editable ? 'overflow-x-auto' : ''}`}>
+      <div className={`bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-6 ${editable ? 'overflow-x-auto' : ''}`}>
         <h3 className={`font-display tracking-wide mb-4 ${editable ? 'text-xl' : 'text-base'}`}>{teamName(teamId)}（{side === 'home' ? '主隊' : '客隊'}）簡表 — 投手</h3>
 
         <table className={editable ? 'text-sm min-w-[900px] w-full' : 'text-xs w-full table-fixed'}>
           <thead>
-            <tr className="text-[#9BA5A4] border-b border-[#333E41]">
-              <th className={`text-left py-2 px-2 ${editable ? 'min-w-[160px]' : 'min-w-[64px]'}`}>球員{editable && <span className="text-xs text-[#6C7574]">（第一位 = 先發）</span>}</th>
+            <tr className="text-[var(--text-muted)] border-b border-[var(--border-default)]">
+              <th className={`text-left py-2 px-2 ${editable ? 'min-w-[160px]' : 'min-w-[64px]'}`}>球員{editable && <span className="text-xs text-[var(--text-faint)]">（第一位 = 先發）</span>}</th>
               {PITCHER_STAT_FIELDS.map(f => (
                 <th key={f.key} className={`px-0.5 py-2 text-center ${editable ? 'w-14' : 'w-8'}`}>{f.label}</th>
               ))}
@@ -501,13 +507,13 @@ export default function GameDetailPage() {
               const whip = outs > 0 ? (((Number(p.stats.bb) || 0) + (Number(p.stats.h) || 0)) * 3 / outs).toFixed(2) : '-';
 
               return (
-                <tr key={p.key} className="border-b border-[#2A3336]">
+                <tr key={p.key} className="border-b border-[var(--border-subtle)]">
                   <td className="py-1.5 px-2">
                     {editable ? (
                       <select
                         value={p.playerId}
                         onChange={(e) => updatePitcherPlayer(side, p.key, e.target.value)}
-                        className="w-full bg-[#12181B] border border-[#333E41] rounded px-2 py-1.5 text-sm"
+                        className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-2 py-1.5 text-sm"
                       >
                         <option value="">選擇投手</option>
                         {roster.map(pl => (
@@ -525,7 +531,7 @@ export default function GameDetailPage() {
                           type="number"
                           value={p.stats[f.key] as string}
                           onChange={(e) => updatePitcherStat(side, p.key, f.key, e.target.value)}
-                          className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
+                          className="w-12 bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-1 py-1 text-center"
                         />
                       ) : (
                         <span className="block text-center">{(p.stats[f.key] as string) || 0}</span>
@@ -575,27 +581,39 @@ export default function GameDetailPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#12181B] text-[#EDEAE2] font-body">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-body">
       <div className="max-w-[1600px] mx-auto px-6 py-10">
+        <ThemeStyles />
         <NavBar />
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <Link
             href="/schedule"
-            className="text-sm text-[#9BA5A4] hover:text-[#EDEAE2]"
+            className="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           >
             ← 回賽程列表
           </Link>
-          {!user && (
-            <button onClick={handleGoogleLogin} className="bg-[#4F86A6] hover:bg-[#3E6F8C] px-5 py-2.5 rounded-lg text-sm font-medium">
+          {!user ? (
+            <button onClick={handleGoogleLogin} className="text-sm text-[#4F86A6] hover:text-[#6FA0C0] hover:underline transition-colors">
               使用 Google 登入
             </button>
+          ) : (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-[var(--text-muted)] hidden sm:inline">{user.email}</span>
+              <span className="text-[var(--border-default)]">|</span>
+              <button
+                onClick={handleLogout}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors"
+              >
+                登出
+              </button>
+            </div>
           )}
         </div>
 
         {/* 比賽資訊 + 總比分 */}
-        <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-8">
-          <div className="flex items-center gap-3 text-sm text-[#9BA5A4] mb-3">
-            <span className="px-2 py-0.5 rounded bg-[#232B2E] text-[#D98E3F] text-xs font-medium">{game.stage}</span>
+        <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-8">
+          <div className="flex items-center gap-3 text-sm text-[var(--text-muted)] mb-3">
+            <span className="px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[#D98E3F] text-xs font-medium">{game.stage}</span>
             {game.game_number && <span>{game.game_number}</span>}
             {game.game_date && <span>{game.game_date}</span>}
           </div>
@@ -607,11 +625,11 @@ export default function GameDetailPage() {
         </div>
 
         {/* 記分板 */}
-        <div className="bg-[#1A2124] border border-[#333E41] rounded-lg p-6 mb-8 overflow-x-auto">
+        <div className="bg-[var(--bg-card)] border border-[var(--border-default)] rounded-lg p-6 mb-8 overflow-x-auto">
           <h2 className="font-display text-2xl tracking-wide mb-4">記分板</h2>
           <table className="w-full text-sm min-w-[650px]">
             <thead>
-              <tr className="text-[#9BA5A4] border-b border-[#333E41]">
+              <tr className="text-[var(--text-muted)] border-b border-[var(--border-default)]">
                 <th className="text-left py-2 px-3">球隊</th>
                 {INNINGS.map(i => <th key={i} className="px-3 py-2 text-center">{i}</th>)}
                 <th className="px-3 py-2 text-center text-[#D98E3F]">R</th>
@@ -623,7 +641,7 @@ export default function GameDetailPage() {
               {[game.away_team_id, game.home_team_id].map((teamId: string) => {
                 const editable = canManageTeam(teamId);
                 return (
-                  <tr key={teamId} className="border-b border-[#2A3336]">
+                  <tr key={teamId} className="border-b border-[var(--border-subtle)]">
                     <td className="py-2 px-3 font-medium">{teamName(teamId)}</td>
                     {INNINGS.map(inning => (
                       <td key={inning} className="px-2 py-2 text-center">
@@ -633,7 +651,7 @@ export default function GameDetailPage() {
                             value={scores[teamId]?.[inning] ?? ''}
                             onChange={(e) => handleInningChange(teamId, inning, e.target.value)}
                             placeholder="-"
-                            className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
+                            className="w-12 bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-1 py-1 text-center"
                           />
                         ) : (
                           <span>{scores[teamId]?.[inning] ?? '-'}</span>
@@ -647,7 +665,7 @@ export default function GameDetailPage() {
                           type="number"
                           value={hits[teamId] ?? ''}
                           onChange={(e) => handleHitsChange(teamId, e.target.value)}
-                          className="w-12 bg-[#12181B] border border-[#333E41] rounded px-1 py-1 text-center"
+                          className="w-12 bg-[var(--bg-page)] border border-[var(--border-default)] rounded px-1 py-1 text-center"
                         />
                       ) : (
                         <span>{hits[teamId] ?? 0}</span>
@@ -669,7 +687,7 @@ export default function GameDetailPage() {
               })}
             </tbody>
           </table>
-          <p className="text-xs text-[#6C7574] mt-3">留空代表該局還沒打，會顯示「-」；填 0 才代表該局有打但沒得分。</p>
+          <p className="text-xs text-[var(--text-faint)] mt-3">留空代表該局還沒打，會顯示「-」；填 0 才代表該局有打但沒得分。</p>
         </div>
 
         {/* 簡表：有編輯權限時維持原本堆疊順序（主隊→客隊，各自野手→投手）方便輸入；
