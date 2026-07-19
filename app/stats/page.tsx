@@ -178,6 +178,7 @@ export default function StatsPage() {
 
   // 篩選面板狀態
   const [inputTeamId, setInputTeamId] = useState('');
+  const [inputPlayerId, setInputPlayerId] = useState('');
   const [inputStartDate, setInputStartDate] = useState('');
   const [inputEndDate, setInputEndDate] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
@@ -295,9 +296,10 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
         l:0,
         g:0,
         gs:0,
-        bf:0,
 
         ip:0,
+
+        bf:0,
 
         h_allowed:0,
 
@@ -330,8 +332,6 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
       p.g += Number(s.g || 0);
 
       p.gs += Number(s.gs || 0);
-
-      p.bf += Number(s.bf || 0); 
       
       p.outs =
       (p.outs || 0)
@@ -339,6 +339,8 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
       ipToOuts(Number(s.ip || 0));
       
       p.ip += Number(s.ip || 0);
+
+      p.bf += Number(s.bf || 0);
 
       p.h_allowed += Number(
         s.h_allowed ??
@@ -353,6 +355,8 @@ const aggregateForDisplay = (stats: any[], playerIds?: string[]) => {
       p.bb_pitch += Number(s.bb || 0);
 
       p.so_pitch += Number(s.so || 0);
+
+      p.hr += Number(s.hr || 0);
 
     }
 
@@ -512,6 +516,11 @@ const handleSearch = () => {
     });
   }
 
+  // 1-2. 球員篩選（選了特定球員的話，他投手/野手的數據都會保留，畫面上會分別顯示在兩張表格）
+  if (inputPlayerId) {
+    result = result.filter(s => String(s.player_id || s.playerId) === String(inputPlayerId));
+  }
+
   // 2. 日期篩選
   if (inputStartDate) {
     result = result.filter(s => {
@@ -549,6 +558,7 @@ const handleSearch = () => {
 
 const handleResetFilter = () => {
   setInputTeamId('');
+  setInputPlayerId('');
   setInputStartDate('');
   setInputEndDate('');
   
@@ -906,6 +916,7 @@ const aggregateStats = (allStats: any[]) => {
         g: 0,
         gs: 0,
         ip: 0,
+        bf: 0,
         outs: 0,
         er: 0,
         so: 0,
@@ -952,6 +963,7 @@ const aggregateStats = (allStats: any[]) => {
       p.gs += Number(s.gs || 0);
       p.outs += ipToOuts(Number(s.ip || 0));
       p.ip += Number(s.ip || 0);
+      p.bf += Number(s.bf || 0);
       p.er += Number(s.er || 0);
       p.so += Number(s.so || 0);
       p.bb += Number(s.bb || 0);
@@ -1235,10 +1247,12 @@ const aggregateStats = (allStats: any[]) => {
                                     />
                                     是否先發
                                   </label>
-                                  <div className="grid grid-cols-8 gap-2 text-xs">
-                                    {['w', 'l', 'ip', 'h', 'r', 'er', 'bb', 'so'].map(key => (
+                                  <div className="grid grid-cols-10 gap-2 text-xs">
+                                    {['ip', 'bf', 'h', 'hr', 'so', 'bb', 'r', 'er', 'w', 'l'].map(key => (
                                       <div key={key} className="flex flex-col">
-                                        <span className="text-[10px] text-[var(--text-faint)] uppercase">{key === 'bb' ? '四死球' : key}</span>
+                                        <span className="text-[10px] text-[var(--text-faint)] uppercase">
+                                          {key === 'bb' ? '四死球' : key === 'bf' ? '打席' : key === 'ip' ? '局數' : key}
+                                        </span>
                                         <input 
                                           type="number" 
                                           step="0.1" 
@@ -1305,12 +1319,34 @@ const aggregateStats = (allStats: any[]) => {
         {/* 查詢區 - 完全保留 */}
         <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-lg p-6 mb-10">
           <h2 className="font-display text-2xl tracking-wide mb-5 flex items-center gap-2">🔍 查詢比賽數據</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm text-[var(--text-muted)] mb-1">球隊</label>
-              <select value={inputTeamId} onChange={(e) => setInputTeamId(e.target.value)} className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg p-3">
+              <select
+                value={inputTeamId}
+                onChange={(e) => { setInputTeamId(e.target.value); setInputPlayerId(''); }}
+                className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg p-3"
+              >
                 <option value="">全部球隊</option>
                 {teams.map(t => <option key={t.id} value={t.id}>{t.team_name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-[var(--text-muted)] mb-1">球員（可選）</label>
+              <select
+                value={inputPlayerId}
+                onChange={(e) => setInputPlayerId(e.target.value)}
+                className="w-full bg-[var(--bg-page)] border border-[var(--border-default)] rounded-lg p-3"
+              >
+                <option value="">全部球員</option>
+                {players
+                  .filter(p => !inputTeamId || String(p.team_id) === String(inputTeamId))
+                  .map(p => (
+                    <option key={p.id} value={p.id}>
+                      {formatPlayerLabel(p.player_name, p.jersey_number)}
+                      {!inputTeamId ? `（${teams.find(t => t.id === p.team_id)?.team_name || '未分類'}）` : ''}
+                    </option>
+                  ))}
               </select>
             </div>
             <div>

@@ -52,12 +52,17 @@ export default function HomePage() {
   const teamName = (id: string) => teams.find(t => t.id === id)?.team_name || '未知球隊';
 
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  // 判斷「已完成」：只要有比分（不管哪一隊，任一方大於0）就算已經打完，
+  // 不完全依賴日期，因為有些比賽分數先進來、日期還沒補上
+  const isFinished = (g: any) => (Number(g.home_score) || 0) > 0 || (Number(g.away_score) || 0) > 0;
+
   const recentGames = games
-    .filter(g => g.game_date && g.game_date <= todayStr)
+    .filter(g => isFinished(g) || (g.game_date && g.game_date <= todayStr))
     .sort((a, b) => (b.game_date || '').localeCompare(a.game_date || ''))
     .slice(0, 8);
   const upcomingGames = games
-    .filter(g => !g.game_date || g.game_date > todayStr)
+    .filter(g => !isFinished(g) && (!g.game_date || g.game_date > todayStr))
     .sort((a, b) => (a.game_date || '9999-99-99').localeCompare(b.game_date || '9999-99-99'))
     .slice(0, 8);
 

@@ -180,6 +180,20 @@ export default function SchedulePage() {
     fetchGames(selectedLeagueId);
   };
 
+  const [dateEdits, setDateEdits] = useState<Record<string, string>>({});
+
+  const handleSaveGameDate = async (gameId: string, newDate: string) => {
+    const res = await fetch('/api/games', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'editGame', gameId, gameDate: newDate }),
+    });
+    const data = await res.json();
+    if (!res.ok) return alert(data.error || '更新失敗');
+    setDateEdits(prev => { const next = { ...prev }; delete next[gameId]; return next; });
+    fetchGames(selectedLeagueId);
+  };
+
   return (
     <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-body">
       <div className="max-w-5xl mx-auto px-6 py-10">
@@ -359,7 +373,30 @@ export default function SchedulePage() {
                                 )}
                                 <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] mb-2">
                                   {g.game_number && <span>{g.game_number}</span>}
-                                  {g.game_date && <span>{g.game_date}</span>}
+                                  {isSuperAdmin ? (
+                                    <div
+                                      className="flex items-center gap-1.5"
+                                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    >
+                                      <input
+                                        type="date"
+                                        value={dateEdits[g.id] ?? g.game_date ?? ''}
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); (e.currentTarget as any).showPicker?.(); }}
+                                        onChange={(e) => setDateEdits(prev => ({ ...prev, [g.id]: e.target.value }))}
+                                        className="bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded px-2 py-1 text-xs cursor-pointer"
+                                      />
+                                      {dateEdits[g.id] !== undefined && dateEdits[g.id] !== (g.game_date || '') && (
+                                        <button
+                                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleSaveGameDate(g.id, dateEdits[g.id]); }}
+                                          className="bg-[#4F86A6] hover:bg-[#3E6F8C] text-white px-2.5 py-1 rounded text-xs font-medium"
+                                        >
+                                          儲存
+                                        </button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span>{g.game_date || '日期未定'}</span>
+                                  )}
                                 </div>
                                 <div className="flex items-center justify-between text-sm">
                                   <span className="font-medium">{teamName(g.away_team_id)}</span>

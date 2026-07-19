@@ -74,6 +74,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
+    // 修改比賽場次（日期、賽段、組別、場次、主客隊都可以改，只有聯盟管理員能用）
+    if (body.action === 'editGame') {
+      const { gameId, stage, groupName, gameNumber, gameDate, homeTeamId, awayTeamId } = body;
+
+      if (!gameId) return NextResponse.json({ error: '缺少比賽 id' }, { status: 400 });
+      if (homeTeamId && awayTeamId && homeTeamId === awayTeamId) {
+        return NextResponse.json({ error: '主隊跟客隊不能是同一支球隊' }, { status: 400 });
+      }
+
+      const updatePayload: Record<string, any> = {};
+      if (stage !== undefined) updatePayload.stage = stage;
+      if (groupName !== undefined) updatePayload.group_name = groupName || null;
+      if (gameNumber !== undefined) updatePayload.game_number = gameNumber || null;
+      if (gameDate !== undefined) updatePayload.game_date = gameDate || null;
+      if (homeTeamId !== undefined) updatePayload.home_team_id = homeTeamId;
+      if (awayTeamId !== undefined) updatePayload.away_team_id = awayTeamId;
+
+      const { error } = await supabase.from('games').update(updatePayload).eq('id', gameId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json({ error: '未知操作' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
